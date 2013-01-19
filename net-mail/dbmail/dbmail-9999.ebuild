@@ -10,7 +10,7 @@ SLOT="0"
 KEYWORDS="~amd64 ~x86"                                                                                                                                                             
 IUSE="ldap sieve postgres mysql sqlite3"                                                                                                                                                              
                                                                                                                                                                                    
-EGIT_REPO_URI="git://git.subdir.eu/paul/dbmail"                                                                                                                                  
+EGIT_REPO_URI="git://git.dbmail.eu/paul/dbmail"                                                                                                                                  
 EGIT_COMMIT="${DBMAIL_GIT_REVISION}"                                                                                                                                               
 EGIT_BRANCH="${DBMAIL_GIT_BRANCH}"
                                                                                                                                                                                    
