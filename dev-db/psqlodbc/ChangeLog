@@ -1,0 +1,21 @@
+# ChangeLog for dev-db/psqlodbc
+# Copyright 1999-2008 Gentoo Foundation; Distributed under the GPL v2
+# $Header: $
+
+  19 Mar 2008; Tiziano Müller <dev-zero@gentoo.org>
+  psqlodbc-08.02.0200.ebuild:
+  Changed dependencies to match new split.
+
+  10 Aug 2006; Tiziano Müller <gentoo@dev-zero.ch>
+  psqlodbc-08.02.0002.ebuild:
+  Setting version for libiodbc dependency to 3.52.4, thanks to Semhirage for
+  testing
+
+  31 Jul 2006; Luca Longinotti <chtekk@gentoo.org>
+  psqlodbc-08.02.0002.ebuild:
+  Style fixes.
+
+  31 Jul 2006; Tiziano Müller <gentoo@dev-zero.ch>
+  +psqlodbc-08.02.0002.ebuild, +metadata.xml:
+  New ebuild for bug #50368
+

@@ -1,0 +1,193 @@
+diff -ruN fritz.old/src/driver.c fritz.new/src/driver.c
+--- fritz.old/src/driver.c	2005-07-07 00:00:00.000000000 +0200
++++ fritz.new/src/driver.c	2011-11-25 11:47:16.000000000 +0100
+@@ -99,7 +99,8 @@
+ static unsigned long		crit_flags;
+ static atomic_t			scheduler_enabled	= ATOMIC_INIT (0);
+ static atomic_t			scheduler_id		= ATOMIC_INIT (-1);
+-static spinlock_t		sched_lock		= SPIN_LOCK_UNLOCKED;
++//static spinlock_t		sched_lock		= SPIN_LOCK_UNLOCKED;
++static DEFINE_SPINLOCK(sched_lock);
+ #if !defined (__fcclassic__)
+ static int			card_id			= 0;
+ #endif
+@@ -194,7 +195,7 @@
+ 	}
+ 	lib_strncpy (ctrl->serial, tmp, CAPI_SERIAL_LEN);
+ 	lib_memcpy (&ctrl->profile, card->string[6], sizeof (capi_profile));
+-	strncpy (ctrl->manu, "AVM GmbH", CAPI_MANUFACTURER_LEN);
++	lib_strncpy (ctrl->manu, "AVM GmbH", CAPI_MANUFACTURER_LEN);
+ 	ctrl->version.majorversion = 2;
+ 	ctrl->version.minorversion = 0;
+ 	tmp = card->string[0];
+@@ -374,9 +375,9 @@
+ 			card->irq, 
+ 			&irq_handler, 
+ #if defined (__fcpci__) || defined (__fcpcmcia__)
+-			SA_INTERRUPT | SA_SHIRQ, 
++			IRQF_DISABLED | IRQF_SHARED, 
+ #else
+-			SA_INTERRUPT, 
++			IRQF_DISABLED,
+ #endif
+ 			TARGET, 
+ 			card
+@@ -549,6 +550,19 @@
+ 	return ((count < len - ofs) ? count : len - ofs);
+ } /* ctr_info */
+ 
++static int ctr_proc_open(struct inode *inode, struct file *file)
++{
++       return single_open(file, ctr_info, PDE(inode)->data);
++}
++
++const struct file_operations ctr_proc_fops = {
++       .owner          = THIS_MODULE,
++       .open           = ctr_proc_open,
++       .read           = seq_read,
++       .llseek         = seq_lseek,
++       .release        = single_release,
++};
++
+ /*---------------------------------------------------------------------------*\
+ \*---------------------------------------------------------------------------*/
+ static void __kcapi reset_ctrl (struct capi_ctr * ctrl) {
+@@ -569,7 +583,7 @@
+ 		}
+ 	}
+ 	stop (card);
+-	capi_ctr_reseted (ctrl);
++	capi_ctr_down (ctrl);
+ #if defined (__fcpnp__)
+ 	pnp_disable_dev (card->dev);
+ #endif
+@@ -626,7 +640,8 @@
+ 	ctrl->release_appl =	release_appl;
+ 	ctrl->send_message =	send_msg;
+ 	ctrl->procinfo =	proc_info;
+-	ctrl->ctr_read_proc =	ctr_info;
++	//ctrl->ctr_read_proc =	ctr_info;
++	ctrl->proc_fops =	&ctr_proc_fops;
+ 	if (0 != (res = attach_capi_ctr (ctrl))) {
+ 		dec_use_count ();
+ 		stop (card);
+@@ -901,10 +916,10 @@
+ 
+ /*---------------------------------------------------------------------------*\
+ \*---------------------------------------------------------------------------*/
+-int driver_init (void) {
++int driver_initnew (void) {
+ 
+ 	return (NULL != (capi_lib = link_library (NULL)));
+-} /* driver_init */
++} /* driver_initnew */
+ 
+ /*---------------------------------------------------------------------------*\
+ \*---------------------------------------------------------------------------*/
+diff -ruN fritz.old/src/driver.h fritz.new/src/driver.h
+--- fritz.old/src/driver.h	2005-07-07 00:00:00.000000000 +0200
++++ fritz.new/src/driver.h	2011-11-25 11:29:36.000000000 +0100
+@@ -23,7 +23,6 @@
+ #ifndef __have_driver_h__
+ #define __have_driver_h__
+ 
+-#include <linux/config.h>
+ #include <linux/skbuff.h>
+ #include <linux/capi.h>
+ #include <linux/list.h>
+@@ -98,7 +97,7 @@
+ 
+ /*---------------------------------------------------------------------------*\
+ \*---------------------------------------------------------------------------*/
+-extern int driver_init (void);
++extern int driver_initnew (void);
+ extern void driver_exit (void);
+ 
+ /*---------------------------------------------------------------------------*\
+diff -ruN fritz.old/src/main.c fritz.new/src/main.c
+--- fritz.old/src/main.c	2005-07-07 00:00:00.000000000 +0200
++++ fritz.new/src/main.c	2011-11-25 11:29:39.000000000 +0100
+@@ -22,7 +22,6 @@
+ 
+ #include <stdarg.h>
+ #include <asm/uaccess.h>
+-#include <linux/config.h>
+ #include <linux/version.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+@@ -47,7 +46,7 @@
+ #include "lib.h"
+ #include "defs.h"
+ 
+-MODULE_LICENSE ("Proprietary");
++MODULE_LICENSE ("GPL");
+ MODULE_DESCRIPTION ("CAPI4Linux: Driver for " PRODUCT_LOGO);
+ 
+ /*---------------------------------------------------------------------------*\
+@@ -205,7 +204,7 @@
+ 	NOTE(PRODUCT_LOGO " found: port 0x%04x, irq %u\n", pars.port, pars.irq);
+ 
+ 	NOTE("Loading...\n");
+-	if (!driver_init ()) {
++	if (!driver_initnew ()) {
+ 		ERROR("Error: Driver library not available.\n");
+ 		ERROR("Not loaded.\n");
+ 		return res;
+@@ -270,7 +269,7 @@
+ 	NOTE (PRODUCT_LOGO " found: port 0x%04x, irq %u\n", pars.port, pars.irq);
+ 
+ 	NOTE("Loading...\n");
+-	if (!driver_init ()) {
++	if (!driver_initnew ()) {
+ 		ERROR("Error: Driver library not available.\n");
+ 		ERROR("Not loaded.\n");
+ 		return -EBUSY;
+@@ -364,7 +363,7 @@
+ #endif
+ 
+ #if defined (__fcpci__)	
+-	if (0 == (err = pci_module_init (&fcpci_driver))) {
++	if (0 == (err = pci_register_driver (&fcpci_driver))) {
+ 		LOG("PCI driver registered.\n");
+ 		register_capi_driver (&fritz_capi_driver);
+ 		LOG("CAPI driver registered.\n");
+@@ -378,7 +377,7 @@
+ 	}
+ 	return err;
+ #elif defined (__fcpcmcia__) || defined (__fcclassic__)
+-	if (!driver_init ()) {
++	if (!driver_initnew ()) {
+ 		ERROR("Error: Driver library not available.\n");
+ 		ERROR("Not loaded.\n");
+ 		return -EBUSY;
+diff -ruN fritz.old/src/tools.c fritz.new/src/tools.c
+--- fritz.old/src/tools.c	2005-07-07 00:00:00.000000000 +0200
++++ fritz.new/src/tools.c	2011-11-25 11:33:59.000000000 +0100
+@@ -529,7 +529,8 @@
+ 		ERROR("Could not allocate lock structure!!!\n");
+ 		return 0;
+ 	}
+-	tmp->lock = SPIN_LOCK_UNLOCKED;
++//	tmp->lock = SPIN_LOCK_UNLOCKED;
++	spin_lock_init(&tmp->lock);
+ 	*plock = tmp;
+ 	return 1;
+ } /* lock_init */
+diff -ruN fritz.old/src/tools.h fritz.new/src/tools.h
+--- fritz.old/src/tools.h	2005-07-07 00:00:00.000000000 +0200
++++ fritz.new/src/tools.h	2011-11-25 11:33:02.000000000 +0100
+@@ -71,13 +71,13 @@
+ 
+ /*---------------------------------------------------------------------------*\
+ \*---------------------------------------------------------------------------*/
++/*
+ static inline unsigned long atomic_xchg (
+ 	volatile atomic_t *	v, 
+ 	unsigned		value
+ ) {
+ 	return __xchg (value, &v->counter, sizeof (unsigned));
+ } /* atomic_xchg */
+-
+ /*---------------------------------------------------------------------------*\
+ \*---------------------------------------------------------------------------*/
+ #ifndef NDEBUG

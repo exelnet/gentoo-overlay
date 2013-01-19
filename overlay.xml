@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<layman>
+    <overlay name="exelnet" quality="experimental" status="unofficial"
+        type="git" src="git://github.com/exelnet/gentoo-overlay.git">
+        <link>//github.com/exelnet/gentoo-overlay</link>
+        <description> exelnet gentoo overlay </description>
+    </overlay>
+</layman>

@@ -1,0 +1,26 @@
+#!/sbin/runscript
+# Copyright 1999-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License, v2 or later
+# $Header: $
+
+JETTY_OPTS="${JAVA_OPTIONS} -Djetty.port=${JETTY_PORT:-8080} -Djetty.home=$JETTY_HOME"
+JAVA="${JAVA_HOME}/bin/java"
+
+depend() {
+	need net
+}
+
+start()	{
+	ebegin "Starting XWiki standalone"
+	cd ${JETTY_HOME}
+	su - xwiki -c "${JAVA} ${JETTY_OPTS} -jar start.jar" >> /var/log/xwiki.log 2>&1 &
+	eend $?
+}
+
+stop ()	{
+	ebegin "Stopping XWiki standalone"
+	cd ${JETTY_HOME}
+	su - xwiki -c "${JAVA} ${JETTY_OPTS} -jar stop.jar" >> /var/log/xwiki.log 2>&1
+	eend $?
+}
+
