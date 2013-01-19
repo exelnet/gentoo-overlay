@@ -16,6 +16,6 @@ Use at your own risks
 #### Sync overlays
     layman -S
 
-#### Install:
+#### Install
     emerge package_name
 
