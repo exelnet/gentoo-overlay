@@ -68,13 +68,14 @@ src_install() {
 
 	sed -i -e "s:nobody:dbmail:" dbmail.conf
 	sed -i -e "s:nogroup:dbmail:" dbmail.conf
-	#sed -i -e "s:#library_directory:library_directory:" dbmail.conf
+	sed -i -e "s:#library_directory:library_directory:" dbmail.conf
 
 	insinto /etc/dbmail
 	newins dbmail.conf dbmail.conf.dist
 
 	# change config path to our default and use the conf.d and init.d files from the contrib dir
 	sed -i -e "s:/etc/dbmail.conf:/etc/dbmail/dbmail.conf:" contrib/startup-scripts/gentoo/init.d-dbmail
+	sed -i -e "s:PID_DIR=/var/run:PID_DIR=/var/run/dbmail:" contrib/startup-scripts/gentoo/init.d-dbmail
 	sed -i -e "s:exit 0:return 1:" contrib/startup-scripts/gentoo/init.d-dbmail
 	newconfd contrib/startup-scripts/gentoo/conf.d-dbmail dbmail
 	newinitd contrib/startup-scripts/gentoo/init.d-dbmail dbmail
@@ -90,6 +91,9 @@ src_install() {
 
 	keepdir /var/lib/dbmail
 	fperms 750 /var/lib/dbmail
+
+	mkdir /var/run/dbmail
+	chown -R dbmail:dbmail /var/run/dbmail
 }
 
 pkg_postinst() {
