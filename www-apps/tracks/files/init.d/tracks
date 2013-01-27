@@ -1,0 +1,63 @@
+#!/sbin/runscript
+# Copyright 2013 Jan Marc Hoffmann
+# Distributed under the terms of the GNU General Public License v2
+# $Header: $
+
+# User that will run the daemon
+DAEMON_USER=tracks
+
+# Name of the tmux-session
+DAEMON_NAME=tracks
+
+# Logfile
+DAEMON_LOG="/var/log/tracks/tracks.log"
+
+# Additional variables needed by the script
+# This suffix might change with different ruby versions
+gemDirRubySuffix="/ruby/1.9.1"
+
+# Executable files in the following paths and additional environment variables that are needed by the script
+export PATH="$PATH:/usr/lib/tracks/gems${gemDirRubySuffix}/bin"
+export GEM_HOME="/usr/lib/tracks/gems${gemDirRubySuffix}"
+export GEM_PATH="/usr/lib/tracks/gems${gemDirRubySuffix}"
+
+# Description
+DESC="Tracks tmux daemon"
+
+# Homedir (empty for user homedir)
+DIR=""
+
+# Command to run the daemon
+DAEMON_CMD="set -e; PATH=${PATH}; GEM_HOME=${GEM_HOME}; GEM_PATH=${GEM_PATH}; rails server -e production &> ${DAEMON_LOG}"
+
+depend() {                                                                                                                                                                                                                                                                     
+    need net                                                                                                                                                                                                                                                  
+} 
+
+start() {
+    if status; then
+	ebegin "${DESC} is already running!"
+	eend 1
+    else
+	ebegin "Starting $DESC"
+	su $DAEMON_USER -c "cd $DIR; tmux new -d -s $DAEMON_NAME -- \"${DAEMON_CMD}\""
+	eend $?
+    fi
+}
+
+stop() {
+    if status; then
+	ebegin "Stopping $DESC"
+	su $DAEMON_USER -c "tmux kill-session -t $DAEMON_NAME"
+	eend $?
+    else
+	ebegin "Coulnd't find a running $DESC"
+	eend 0
+    fi
+}
+
+status() {
+    su ${DAEMON_USER} -c "tmux ls 2> /dev/null | awk -F ':' '{ print $1 }' | grep -q ${DAEMON_NAME}"
+    return $?
+}
+
